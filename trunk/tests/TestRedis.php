@@ -129,5 +129,16 @@ class Redis_Test extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(null, $this->redis->get("key"));
     }
+
+    public function testListPush()
+    {
+        $this->redis->listPush("list", "val");
+        $this->redis->listPush("list", "val2");
+        $this->redis->listPush("list", "val3", 1);
+
+        $this->assertEquals("val3", $this->redis->listPop("list", 1));
+        $this->assertEquals("val", $this->redis->listPop("list"));
+        $this->assertEquals("val2", $this->redis->listPop("list"));
+    }
 }
 ?>
