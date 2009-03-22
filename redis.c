@@ -763,9 +763,9 @@ PHP_METHOD(Redis, listTrim)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 5);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2db) {
             RETURN_TRUE;
@@ -800,24 +800,21 @@ PHP_METHOD(Redis, listGet)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 8);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
+        php_stream_gets(s, buf, 1024);
 
-        if (buf[0] == 0x2d || buf[0] == 0x6e) {
-            RETURN_NULL();
-        }
+        zval *value;
+        zval trim_zv;
+        MAKE_STD_ZVAL(value);
 
-        int res_len = atoi(buf) + 1;
-        int buf_len = 0;
+        ZVAL_STRING(value, buf, 1);
+        trim_zv = *value;
+        php_trim(Z_STRVAL(trim_zv), Z_STRLEN(trim_zv), NULL, 0, &trim_zv,
+                 3 TSRMLS_CC);
 
-        while (res_len > 0) {
-            php_stream_gets(s, buf, sizeof(char) * res_len);
-            buf_len = strlen(buf);
-            res_len = res_len - buf_len;
-        }
-
-        RETURN_STRING(buf, 1);
+        RETURN_STRING(Z_STRVAL(trim_zv), 1);
     } else {
         php_error_docref(NULL TSRMLS_CC, E_ERROR, "The object is not connected");
         RETURN_FALSE;
@@ -899,9 +896,11 @@ PHP_METHOD(Redis, setAdd)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 2);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
+
+        efree(buf);
 
         int num = atoi(buf);
 
@@ -942,9 +941,9 @@ PHP_METHOD(Redis, setSize)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 16);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d) {
             php_error_docref(NULL TSRMLS_CC, E_ERROR,
@@ -953,6 +952,8 @@ PHP_METHOD(Redis, setSize)
         }
 
         int res = atoi(buf);
+
+        efree(buf);
 
         RETURN_LONG(res);
     } else {
@@ -983,9 +984,9 @@ PHP_METHOD(Redis, setRemove)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 2);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d) {
             php_error_docref(NULL TSRMLS_CC, E_ERROR,
@@ -1071,7 +1072,7 @@ PHP_METHOD(Redis, setGetMembers)
 
         char buf[4096];
 
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d || buf[0] == 0x6e) {
             RETURN_NULL();
