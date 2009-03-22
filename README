@@ -1,8 +1,8 @@
 ============
-= RedisPHP =
+= phpredis =
 ============
 
-This extension provides a API for communicating with Redis database, a persistent 
+This extension provides an API for communicating with Redis database, a persistent 
 key-value database with built-in net interface written in ANSI-C for Posix systems.
 
 IMPORTANT
