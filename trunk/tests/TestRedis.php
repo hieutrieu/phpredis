@@ -109,36 +109,51 @@ class Redis_Test extends PHPUnit_Framework_TestCase
 
     public function testGetKeys()
     {
-        $keys = $this->redis->getKeys("a*");
+        $keys = $this->redis->getKeys('a*');
         $key  = 'a' . rand();
 
         $this->redis->add($key, 'val');
 
-        $keys2 = $this->redis->getKeys("a*");
+        $keys2 = $this->redis->getKeys('a*');
 
         $this->assertEquals((count($keys) + 1), count($keys2));
     }
 
     public function testDelete()
     {
-        $this->redis->set("key", "val");
+        $this->redis->set('key', 'val');
 
-        $this->assertEquals("val", $this->redis->get("key"));
+        $this->assertEquals('val', $this->redis->get('key'));
 
-        $this->redis->delete("key");
+        $this->redis->delete('key');
 
-        $this->assertEquals(null, $this->redis->get("key"));
+        $this->assertEquals(null, $this->redis->get('key'));
     }
 
-    public function testListPush()
+    public function testListPop()
     {
-        $this->redis->listPush("list", "val");
-        $this->redis->listPush("list", "val2");
-        $this->redis->listPush("list", "val3", 1);
+        $this->redis->delete('list');
 
-        $this->assertEquals("val3", $this->redis->listPop("list", 1));
-        $this->assertEquals("val", $this->redis->listPop("list"));
-        $this->assertEquals("val2", $this->redis->listPop("list"));
+        $this->redis->listPush('list', 'val');
+        $this->redis->listPush('list', 'val2');
+        $this->redis->listPush('list', 'val3', 1);
+
+        $this->assertEquals('val3', $this->redis->listPop('list', 1));
+        $this->assertEquals('val2', $this->redis->listPop('list'));
+        $this->assertEquals('val', $this->redis->listPop('list'));
+    }
+
+    public function testListSize()
+    {
+        $this->redis->delete('list');
+
+        $this->redis->listPush('list', 'val');
+        
+        $this->assertEquals(1, $this->redis->listSize('list'));
+
+        $this->redis->listPush('list', 'val');
+        
+        $this->assertEquals(2, $this->redis->listSize('list'));
     }
 }
 ?>
