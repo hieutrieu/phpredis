@@ -900,9 +900,9 @@ PHP_METHOD(Redis, setAdd)
             
         php_stream_gets(s, buf, 1024);
 
-        efree(buf);
-
         int num = atoi(buf);
+
+        efree(buf);
 
         if (num == 1) {
             RETURN_TRUE;
