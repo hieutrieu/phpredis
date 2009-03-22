@@ -160,23 +160,22 @@ PHP_METHOD(Redis, connect)
 {
     struct timeval tv;
 
-    char *host;
-    char *hostname = NULL, *hash_key = NULL, *errstr = NULL;
-    int host_len, hostname_len, port, err = 0;
+    char *host, *addr = NULL, *hash_key = NULL, *errstr = NULL;
+    int host_len, addr_len, port, err = 0;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &host, &host_len,
                               &port) == FAILURE) {
         RETURN_NULL();
     }
 
-    hostname     = emalloc(strlen(host) + MAX_LENGTH_OF_LONG + 2);
-    hostname_len = sprintf(hostname, "%s:%d", host, port);
+    addr     = emalloc(strlen(host) + MAX_LENGTH_OF_LONG + 2);
+    addr_len = spprintf(&addr, 0, "%s:%d", host, port);
 
     tv.tv_sec  = 5;
     tv.tv_usec = 0;
 
-    s = php_stream_xport_create(hostname,
-                                hostname_len,
+    s = php_stream_xport_create(addr,
+                                addr_len,
                                 ENFORCE_SAFE_MODE | REPORT_ERRORS,
                                 STREAM_XPORT_CLIENT | STREAM_XPORT_CONNECT,
                                 hash_key,
@@ -184,7 +183,9 @@ PHP_METHOD(Redis, connect)
                                 NULL,
                                 &errstr,
                                 &err);
-    if (!s) {
+    efree(addr);
+
+    if (s == NULL) {
         php_error_docref(NULL TSRMLS_CC, E_ERROR, "%s", errstr);
         RETURN_FALSE;
     } else {
@@ -377,7 +378,7 @@ PHP_METHOD(Redis, incr)
 
         php_stream_write(s, cmd, strlen(cmd));
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == '1') {
            RETURN_TRUE;
@@ -416,7 +417,7 @@ PHP_METHOD(Redis, decr)
 
         php_stream_write(s, cmd, strlen(cmd));
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == '1') {
            RETURN_TRUE;
@@ -631,9 +632,9 @@ PHP_METHOD(Redis, listPush)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 8);
-            
-        php_stream_gets(s, buf, sizeof(buf));
+        buf = (char *) emalloc(1024);
+
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2b) {
            RETURN_TRUE;
@@ -674,24 +675,26 @@ PHP_METHOD(Redis, listPop)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 8);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d || buf[0] == 0x6e) {
             RETURN_NULL();
         }
 
-        int res_len = atoi(buf) + 1;
-        int buf_len = 0;
+        php_stream_gets(s, buf, 1024);
 
-        while (res_len > 0) {
-            php_stream_gets(s, buf, sizeof(char) * res_len);
-            buf_len = strlen(buf);
-            res_len = res_len - buf_len;
-        }
+        zval *value;
+        zval trim_zv;
+        MAKE_STD_ZVAL(value);
 
-        RETURN_STRING(buf, 1);
+        ZVAL_STRING(value, buf, 1);
+        trim_zv = *value;
+        php_trim(Z_STRVAL(trim_zv), Z_STRLEN(trim_zv), NULL, 0, &trim_zv,
+                 3 TSRMLS_CC);
+
+        RETURN_STRING(Z_STRVAL(trim_zv), 1);
     } else {
         php_error_docref(NULL TSRMLS_CC, E_ERROR, "The object is not connected");
         RETURN_FALSE;
@@ -720,9 +723,9 @@ PHP_METHOD(Redis, listSize)
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 16);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d) {
             php_error_docref(NULL TSRMLS_CC, E_ERROR, "'%s' is not a list", key);
@@ -838,13 +841,13 @@ PHP_METHOD(Redis, listGetRange)
         char *cmd, *buf;
         int cmd_len;
 
-        cmd_len = spprintf(&cmd, 0, "LRANGE %s %d %d\r\n", key, start, end);
+        cmd_len = spprintf(&cmd, 0, "LRANGE %s %d %d\r\n\r\n", key, start, end);
 
         php_stream_write(s, cmd, strlen(cmd));
 
-        buf = (char *) emalloc(sizeof(char) * 8);
+        buf = (char *) emalloc(1024);
             
-        php_stream_gets(s, buf, sizeof(buf));
+        php_stream_gets(s, buf, 1024);
 
         if (buf[0] == 0x2d || buf[0] == 0x6e) {
             RETURN_NULL();
@@ -853,11 +856,19 @@ PHP_METHOD(Redis, listGetRange)
         array_init(return_value);
 
         int numItems = atoi(buf);
+        zval *value;
+        zval trim_zv;
+        MAKE_STD_ZVAL(value);
 
         while (numItems > 0) {
-            php_stream_gets(s, buf, sizeof(char) * 8);
-            php_stream_gets(s, buf, sizeof(char) * 256);
-            add_next_index_string(return_value, buf, 1);
+            php_stream_gets(s, buf, 1024);
+            php_stream_gets(s, buf, 1024);
+
+            ZVAL_STRING(value, buf, 1);
+            trim_zv = *value;
+            php_trim(Z_STRVAL(trim_zv), Z_STRLEN(trim_zv), NULL, 0, &trim_zv,
+                     3 TSRMLS_CC);
+            add_next_index_string(return_value, Z_STRVAL(trim_zv), 1);
             numItems--;
         }
     } else {
