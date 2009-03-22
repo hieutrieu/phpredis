@@ -169,7 +169,7 @@ PHP_METHOD(Redis, connect)
         RETURN_NULL();
     }
 
-    hostname     = emalloc(strlen(host) + MAX_LENGTH_OF_LONG + 1 + 1);
+    hostname     = emalloc(strlen(host) + MAX_LENGTH_OF_LONG + 2);
     hostname_len = sprintf(hostname, "%s:%d", host, port);
 
     tv.tv_sec  = 5;
@@ -276,7 +276,16 @@ PHP_METHOD(Redis, get)
             res_len = res_len - buf_len;
         }
 
-        RETURN_STRING(buf, 1);
+        zval *value;
+        zval trim_zv;
+        MAKE_STD_ZVAL(value);
+
+        ZVAL_STRING(value, buf, 1);
+        trim_zv = *value;
+        php_trim(Z_STRVAL(trim_zv), Z_STRLEN(trim_zv), NULL, 0, &trim_zv,
+                 3 TSRMLS_CC);
+
+        RETURN_STRING(Z_STRVAL(trim_zv), 1);
     } else {
         php_error_docref(NULL TSRMLS_CC, E_ERROR, "The object is not connected");
         RETURN_FALSE;
@@ -301,13 +310,13 @@ PHP_METHOD(Redis, add)
         int cmd_len;
         char buf[1024];
 
-        cmd_len = spprintf(&cmd, 0, "SETXN %s %d\r\n%s\r\n", key, strlen(val), val);
+        cmd_len = spprintf(&cmd, 0, "SETNX %s %d\r\n%s\r\n", key, strlen(val), val);
 
         php_stream_write(s, cmd, strlen(cmd));
 
         php_stream_gets(s, buf, sizeof(buf));
 
-        if (buf[0] == 0x31) {
+        if (atoi(buf) == 1) {
             RETURN_TRUE;
         } else {
             RETURN_FALSE;
@@ -329,7 +338,7 @@ PHP_METHOD(Redis, ping)
 
        php_stream_write(s, cmd, strlen(cmd));
             
-       php_stream_gets(s, buf, sizeof(buf));
+       php_stream_gets(s, buf, sizeof(char) * 6);
 
        if (buf[0] == 0x2b) {
           RETURN_STRING(buf, 1);
