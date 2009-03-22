@@ -1,0 +1,35 @@
+Reference Methods
+
+==Connection handling==
+  * Redis __construct()
+  * boolean connect(string host, int port)
+  * string ping()
+  * void close()
+
+==Commands operating on string values==
+  * boolean set(string key, string value)
+  * string get(string key)
+  * boolean add(string key, string value)
+  * boolean incr(string key, int value = 1)
+  * boolean decr(string key, int value = 1)
+
+==Commands operating on the key space==
+  * boolean exists(string key)
+  * int type(string key)
+  * array getKeys(string pattern)
+  * boolean delete(string key)
+
+==Commands operating on list objects==
+  * boolean listPush(string key, string value, int type = 0)
+  * string listPop(string key, int type = 0)
+  * int listSize(string key)
+  * boolean listTrim(string key, int start, int end)
+  * string listGet(string key, int index)
+  * array listGetRange(string key, int start, int end)
+
+==Commands operating on set objects==
+  * boolean setAdd(string key, string member)
+  * int setSize(string key)
+  * mixed setRemove(string key, string member)
+  * boolean setContains(string key, string member)
+  * array setGetMembers(string key)
