@@ -1,24 +1,11 @@
 dnl $Id$
 dnl config.m4 for extension redis
 
-dnl Comments in this file start with the string 'dnl'.
-dnl Remove where necessary. This file will not work
-dnl without editing.
-
-dnl If your extension references something external, use with:
-
-dnl PHP_ARG_WITH(redis, for redis support,
-dnl Make sure that the comment is aligned:
-dnl [  --with-redis             Include redis support])
-
-dnl Otherwise use enable:
-
 PHP_ARG_ENABLE(redis, whether to enable redis support,
 dnl Make sure that the comment is aligned:
 [  --enable-redis           Enable redis support])
 
 if test "$PHP_REDIS" != "no"; then
-  dnl Write more examples of tests here...
 
   dnl # --with-redis -> check with-path
   dnl SEARCH_PATH="/usr/local /usr"     # you might want to change this
