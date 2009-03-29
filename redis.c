@@ -178,17 +178,19 @@ PHPAPI int redis_sock_server_open(RedisSock *redis_sock, int force_connect TSRML
  */
 PHPAPI int redis_sock_disconnect(RedisSock *redis_sock TSRMLS_DC)
 {
-    if (redis_sock->stream == NULL) {
-        return 0;
+    int res = 0;
+
+    if (redis_sock->stream != NULL) {
+        redis_sock_write(redis_sock, "QUIT");
+
+        redis_sock->status = REDIS_SOCK_STATUS_DISCONNECTED;
+        php_stream_close(redis_sock->stream);
+        redis_sock->stream = NULL;
+
+        res = 1;
     }
 
-    redis_sock_write (redis_sock, "QUIT");
-
-    redis_sock->status = REDIS_SOCK_STATUS_DISCONNECTED;
-    php_stream_close(redis_sock->stream);
-    redis_sock->stream = NULL;
-
-    return 1;
+    return res;
 }
 
 /**
@@ -205,15 +207,12 @@ PHPAPI char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_DC)
     switch(s[0]) {
         case '-':
             printf("error");
-            /*
-            cliReadSingleLineReply(fd);
-            return 1;*/
         break;
         case '+':
         case ':':    
             /* Single Line Reply */
             strcpy(response, s);
-            break;
+        break;
         case '$':
             /* Bulk Reply */
             length = strlen(s) - 1;
@@ -223,8 +222,8 @@ PHPAPI char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_DC)
             strncpy(bytes, s + 1, length);
 
             strcpy(response, redis_sock_read_bulk_reply(redis_sock, atoi(bytes)));
-            break;
-       default:
+        break;
+        default:
             printf("protocol error, got '%c' as reply type byte\n", s[0]);
        }
 
@@ -247,6 +246,8 @@ PHPAPI char *redis_sock_read_bulk_reply(RedisSock *redis_sock, int bytes)
 
         reply = estrndup(reply, (strlen(reply)-2));
         strcpy(response, reply);
+
+        efree(reply);
     }
 
     return response;
@@ -325,9 +326,8 @@ PHPAPI int redis_sock_get(zval *id, RedisSock **redis_sock TSRMLS_DC)
 }
 
 /**
- * redis_destructor_redis_sock
+ * redis_free_socket
  */
-
 PHPAPI void redis_free_socket(RedisSock *redis_sock)
 {
     efree(redis_sock->host);
