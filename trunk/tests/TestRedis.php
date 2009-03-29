@@ -31,7 +31,7 @@ class Redis_Test extends PHPUnit_Framework_TestCase
     {
         $this->assertEquals('+PONG', $this->redis->ping());
     }
-    
+
     public function testGet()
     {
         $this->redis->set('key', 'val');
@@ -130,126 +130,133 @@ class Redis_Test extends PHPUnit_Framework_TestCase
         $this->assertEquals(null, $this->redis->get('key'));
     }
 
-    public function testListPop()
+    public function testType()
     {
-        $this->redis->delete('list');
+        $this->redis->set('key', 'val');
 
-        $this->redis->listPush('list', 'val');
-        $this->redis->listPush('list', 'val2');
-        $this->redis->listPush('list', 'val3', 1);
-
-        $this->assertEquals('val3', $this->redis->listPop('list', 1));
-        $this->assertEquals('val2', $this->redis->listPop('list'));
-        $this->assertEquals('val', $this->redis->listPop('list'));
+        $this->assertEquals(1, $this->redis->type('key'));
     }
 
-    public function testListSize()
+    public function testlPop()
     {
         $this->redis->delete('list');
 
-        $this->redis->listPush('list', 'val');
-        
-        $this->assertEquals(1, $this->redis->listSize('list'));
+        $this->redis->lPush('list', 'val');
+        $this->redis->lPush('list', 'val2');
+        $this->redis->lPush('list', 'val3', 1);
 
-        $this->redis->listPush('list', 'val');
-        
-        $this->assertEquals(2, $this->redis->listSize('list'));
+        $this->assertEquals('val3', $this->redis->lPop('list', 1));
+        $this->assertEquals('val2', $this->redis->lPop('list'));
+        $this->assertEquals('val', $this->redis->lPop('list'));
     }
 
-    public function testListTrim()
+    public function testlSize()
     {
         $this->redis->delete('list');
 
-        $this->redis->listPush('list', 'val');
-        $this->redis->listPush('list', 'val2');
-        $this->redis->listPush('list', 'val3');
+        $this->redis->lPush('list', 'val');
+        
+        $this->assertEquals(1, $this->redis->lSize('list'));
+
+        $this->redis->lPush('list', 'val');
+        
+        $this->assertEquals(2, $this->redis->lSize('list'));
+    }
+
+    public function testlistTrim()
+    {
+        $this->redis->delete('list');
+
+        $this->redis->lPush('list', 'val');
+        $this->redis->lPush('list', 'val2');
+        $this->redis->lPush('list', 'val3');
 
         $this->redis->listTrim('list', 0, 0);
   
-        $this->assertEquals(1, $this->redis->listSize('list'));
-        $this->assertEquals('val', $this->redis->listPop('list'));
+        $this->assertEquals(1, $this->redis->lSize('list'));
+        $this->assertEquals('val', $this->redis->lPop('list'));
     }
 
-    public function testListGet()
+    public function testlGet()
     {
         $this->redis->delete('list');
 
-        $this->redis->listPush('list', 'val');
-        $this->redis->listPush('list', 'val2');
-        $this->redis->listPush('list', 'val3');
+        $this->redis->lPush('list', 'val');
+        $this->redis->lPush('list', 'val2');
+        $this->redis->lPush('list', 'val3');
 
-        $this->assertEquals('val', $this->redis->listGet('list', 0));
-        $this->assertEquals('val2', $this->redis->listGet('list', 1));
-        $this->assertEquals('val3', $this->redis->listGet('list', 2));
+        $this->assertEquals('val', $this->redis->lGet('list', 0));
+        $this->assertEquals('val2', $this->redis->lGet('list', 1));
+        $this->assertEquals('val3', $this->redis->lGet('list', 2));
 
-        $this->redis->listPush('list', 'val4');
-        $this->assertEquals('val4', $this->redis->listGet('list', 3));
+        $this->redis->lPush('list', 'val4');
+        $this->assertEquals('val4', $this->redis->lGet('list', 3));
     }
 
-    public function testSetAdd()
+    public function testsAdd()
     {
         $this->redis->delete('set');
 
-        $this->redis->setAdd('set', 'val');
+        $this->redis->sAdd('set', 'val');
 
-        $this->assertTrue($this->redis->setContains('set', 'val'));
-        $this->assertFalse($this->redis->setContains('set', 'val2'));
+        $this->assertTrue($this->redis->sContains('set', 'val'));
+        $this->assertFalse($this->redis->sContains('set', 'val2'));
 
-        $this->redis->setAdd('set', 'val2');
+        $this->redis->sAdd('set', 'val2');
 
-        $this->assertTrue($this->redis->setContains('set', 'val2'));
+        $this->assertTrue($this->redis->sContains('set', 'val2'));
     }
 
-    public function testSetSize()
+    public function testsSize()
     {
         $this->redis->delete('set');
 
-        $this->redis->setAdd('set', 'val');
+        $this->redis->sAdd('set', 'val');
         
-        $this->assertEquals(1, $this->redis->setSize('set'));
+        $this->assertEquals(1, $this->redis->sSize('set'));
 
-        $this->redis->setAdd('set', 'val2');
+        $this->redis->sAdd('set', 'val2');
         
-        $this->assertEquals(2, $this->redis->setSize('set'));
+        $this->assertEquals(2, $this->redis->sSize('set'));
     }
 
-    public function testSetRemove()
+    public function testsRemove()
     {
         $this->redis->delete('set');
 
-        $this->redis->setAdd('set', 'val');
-        $this->redis->setAdd('set', 'val2');
+        $this->redis->sAdd('set', 'val');
+        $this->redis->sAdd('set', 'val2');
         
-        $this->redis->setRemove('set', 'val');
+        $this->redis->sRemove('set', 'val');
 
-        $this->assertEquals(1, $this->redis->setSize('set'));
+        $this->assertEquals(1, $this->redis->sSize('set'));
 
-        $this->redis->setRemove('set', 'val2');
+        $this->redis->sRemove('set', 'val2');
 
-        $this->assertEquals(0, $this->redis->setSize('set'));
+        $this->assertEquals(0, $this->redis->sSize('set'));
     }
 
-    public function testSetContains()
+    public function testsContains()
     {
         $this->redis->delete('set');
 
-        $this->redis->setAdd('set', 'val');
+        $this->redis->sAdd('set', 'val');
         
-        $this->assertTrue($this->redis->setContains('set', 'val'));
-        $this->assertFalse($this->redis->setContains('set', 'val2'));
+        $this->assertTrue($this->redis->sContains('set', 'val'));
+        $this->assertFalse($this->redis->sContains('set', 'val2'));
     }
 
-    public function testSetGetMembers()
+    public function testsGetMembers()
     {
         $this->redis->delete('set');
 
-        $this->redis->setAdd('set', 'val');
-        $this->redis->setAdd('set', 'val2');
-        $this->redis->setAdd('set', 'val3');
+        $this->redis->sAdd('set', 'val');
+        $this->redis->sAdd('set', 'val2');
+        $this->redis->sAdd('set', 'val3');
 
         $array = array('val', 'val2', 'val3');
         
-        $this->assertEquals($array, $this->redis->setGetMembers('set'));
+        $this->assertEquals($array, $this->redis->sGetMembers('set'));
     }
 }
 
