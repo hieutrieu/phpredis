@@ -12,6 +12,7 @@ Reference Methods
   * boolean add(string key, string value)
   * boolean incr(string key, int value = 1)
   * boolean decr(string key, int value = 1)
+  * array getMultiple(array(key1, key2, ..., keyn)) *new!*
 
 ==Commands operating on the key space==
   * boolean exists(string key)
@@ -33,3 +34,6 @@ Reference Methods
   * mixed sRemove(string key, string member)
   * boolean sContains(string key, string member)
   * array sGetMembers(string key)
+
+==Sorting==
+  * array getSort(string key [,order = 0, pattern = "*", start=0, end = 0]) *new!*
