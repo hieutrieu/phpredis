@@ -48,6 +48,7 @@ zend_function_entry redis_functions[] = {
      PHP_ME(Redis, lPush, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lPop, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lSize, NULL, ZEND_ACC_PUBLIC)
+     PHP_ME(Redis, lRemove, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, listTrim, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lGet, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lGetRange, NULL, ZEND_ACC_PUBLIC)
@@ -1043,6 +1044,44 @@ PHP_METHOD(Redis, lSize)
     int res = atoi(response + 1);
 
     RETURN_LONG(res);
+}
+/* }}} */
+
+/* {{{ proto boolean Redis::lRemove(string list, string value, int count = 0)
+ */
+PHP_METHOD(Redis, lRemove)
+{
+    zval *object;
+    RedisSock *redis_sock;
+    char *key = NULL, *val = NULL, *cmd, *response;
+    int key_len, val_len, count = 0, cmd_len, response_len;
+
+    if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss|l",
+                                     &object, redis_ce, &key, &key_len,
+                                     &val, &val_len, &count) == FAILURE) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_get(object, &redis_sock TSRMLS_CC) < 0) {
+        RETURN_FALSE;
+    }
+
+    cmd_len = spprintf(&cmd, 0, "LREM %s %d %d\r\n%s\r\n",
+                       key, count, strlen(val), val);
+
+    if (redis_sock_write(redis_sock, cmd) < 0) {
+        RETURN_FALSE;
+    }
+
+    if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
+        RETURN_FALSE;
+    }
+
+    if (response[1] == '0') {
+        RETURN_FALSE;
+    } else {
+        RETURN_TRUE;
+    }
 }
 /* }}} */
 
