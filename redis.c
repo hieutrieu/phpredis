@@ -37,12 +37,14 @@ zend_function_entry redis_functions[] = {
      PHP_ME(Redis, get, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, set, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, add, NULL, ZEND_ACC_PUBLIC)
+     PHP_ME(Redis, getMultiple, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, exists, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, delete, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, incr, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, decr, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, type, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, getKeys, NULL, ZEND_ACC_PUBLIC)
+     PHP_ME(Redis, getSort, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lPush, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lPop, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, lSize, NULL, ZEND_ACC_PUBLIC)
@@ -710,6 +712,56 @@ PHP_METHOD(Redis, decr)
 }
 /* }}} */
 
+/* {{{ proto array Redis::getMultiple(array keys)
+ */
+PHP_METHOD(Redis, getMultiple)
+{
+    zval *object, *array, **data;
+    HashTable *arr_hash;
+    HashPosition pointer;
+    RedisSock *redis_sock;
+    char *cmd = "", *response;
+    int cmd_len, response_len, array_count;
+
+    if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oa",
+                                     &object, redis_ce, &array) == FAILURE) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_get(object, &redis_sock TSRMLS_CC) < 0) {
+        RETURN_FALSE;
+    }
+
+    arr_hash    = Z_ARRVAL_P(array);
+    array_count = zend_hash_num_elements(arr_hash);
+
+    if (array_count == 0) {
+        RETURN_FALSE;
+    }
+
+    for (zend_hash_internal_pointer_reset_ex(arr_hash, &pointer);
+         zend_hash_get_current_data_ex(arr_hash, (void**) &data,
+                                       &pointer) == SUCCESS;
+         zend_hash_move_forward_ex(arr_hash, &pointer)) {
+
+        if (Z_TYPE_PP(data) == IS_STRING) {
+            cmd_len = spprintf(&cmd, 0, "%s %s", cmd, Z_STRVAL_PP(data));
+        }
+    }
+
+    cmd_len = spprintf(&cmd, 0, "MGET%s\r\n", cmd);
+
+    if (redis_sock_write(redis_sock, cmd) < 0) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_read_multibulk_reply(INTERNAL_FUNCTION_PARAM_PASSTHRU,
+                                        redis_sock, &response_len TSRMLS_CC) < 0) {
+        RETURN_FALSE;
+    }
+}
+/* }}} */
+
 /* {{{ proto boolean Redis::exists(string key)
  */
 PHP_METHOD(Redis, exists)
@@ -1272,6 +1324,52 @@ PHP_METHOD(Redis, sGetMembers)
     }
 
     cmd_len = spprintf(&cmd, 0, "SMEMBERS %s\r\n", key);
+
+    if (redis_sock_write(redis_sock, cmd) < 0) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_read_multibulk_reply(INTERNAL_FUNCTION_PARAM_PASSTHRU,
+                                        redis_sock, &response_len TSRMLS_CC) < 0) {
+        RETURN_FALSE;
+    }
+}
+/* }}} */
+
+/* {{{ proto array Redis::getSort(string key [,order = 0, pattern = "*", start=0,
+ *                                                                       end = 0])
+ */
+PHP_METHOD(Redis, getSort)
+{
+    zval *object;
+    RedisSock *redis_sock;
+    char *key = NULL, *pattern = "*", *cmd, *response, *limit = "";
+    char order_str[] = "DESC";
+    int key_len, pattern_len, start = 0, end = 0, order = 0, cmd_len,
+        response_len, limit_len, order_len;
+    zend_bool alpha = 0;
+
+    if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|lsll",
+                                     &object, redis_ce,
+                                     &key, &key_len, &order, &pattern, &pattern_len,
+                                     &start, &end) == FAILURE) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_get(object, &redis_sock TSRMLS_CC) < 0) {
+        RETURN_FALSE;
+    }
+
+    if (start != 0 && end != 0) {
+        limit_len = spprintf(&limit, 0, "LIMIT %d %d", start, end);
+    }
+
+    if (order == 1) {
+        strcpy(order_str, "ASC");
+    }
+    
+    cmd_len = spprintf(&cmd, 0, "SORT %s BY %s %s %s ALPHA\r\n", key, pattern,
+                       limit, order_str);
 
     if (redis_sock_write(redis_sock, cmd) < 0) {
         RETURN_FALSE;
