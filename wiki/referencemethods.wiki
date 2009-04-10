@@ -27,6 +27,7 @@ Reference Methods
   * boolean listTrim(string key, int start, int end)
   * string lGet(string key, int index)
   * array lGetRange(string key, int start, int end)
+  * boolean lRemove(string key, string value, int count = 0) *new!*
 
 ==Commands operating on set objects==
   * boolean sAdd(string key, string member)
