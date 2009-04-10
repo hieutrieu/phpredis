@@ -39,6 +39,7 @@ PHP_METHOD(Redis, getSort);
 PHP_METHOD(Redis, lPush);
 PHP_METHOD(Redis, lPop);
 PHP_METHOD(Redis, lSize);
+PHP_METHOD(Redis, lRemove);
 PHP_METHOD(Redis, listTrim);
 PHP_METHOD(Redis, lGet);
 PHP_METHOD(Redis, lGetRange);
