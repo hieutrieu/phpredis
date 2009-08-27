@@ -28,6 +28,7 @@
 static int le_redis_sock;
 static zend_class_entry *redis_ce;
 static zend_class_entry *redis_exception_ce;
+static zend_class_entry *spl_ce_RuntimeException = NULL;
 
 zend_function_entry redis_functions[] = {
      PHP_ME(Redis, __construct, NULL, ZEND_ACC_PUBLIC)
@@ -337,6 +338,30 @@ PHPAPI void redis_free_socket(RedisSock *redis_sock)
     efree(redis_sock);
 }
 
+PHPAPI zend_class_entry *redis_get_exception_base(int root TSRMLS_DC)
+{
+#if HAVE_SPL
+        if (!root) {
+                if (!spl_ce_RuntimeException) {
+                        zend_class_entry **pce;
+        
+                        if (zend_hash_find(CG(class_table), "runtimeexception",
+                                                           sizeof("RuntimeException"), (void **) &pce) == SUCCESS) {
+                                spl_ce_RuntimeException = *pce;
+                                return *pce;
+                        }
+                } else {
+                        return spl_ce_RuntimeException;
+                }
+        }
+#endif
+#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 2)
+        return zend_exception_get_default();
+#else
+        return zend_exception_get_default(TSRMLS_C);
+#endif
+}
+
 /**
  * redis_destructor_redis_sock
  */
@@ -360,7 +385,7 @@ PHP_MINIT_FUNCTION(redis)
     INIT_CLASS_ENTRY(redis_exception_class_entry, "RedisException", NULL);
     redis_exception_ce = zend_register_internal_class_ex(
         &redis_exception_class_entry,
-        zend_exception_get_default(TSRMLS_C),
+        redis_get_exception_base(0 TSRMLS_CC),
         NULL TSRMLS_CC
     );
 
